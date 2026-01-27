@@ -1,7 +1,7 @@
 num_demos: 30
 SAVE_RENDER: True
 USE_CUROBO: True
-HEADLESS: False
+HEADLESS: True
 SAVE_ROOT: "output/gym_test"
 USE_MESH_COLLISION: True
 steps: 1000
