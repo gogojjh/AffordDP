@@ -172,7 +172,6 @@ def collect_demo(args):
                 else:
                     count += success
                     pbar.update(1)
-            break
     del gym
 
 if __name__ =='__main__':
