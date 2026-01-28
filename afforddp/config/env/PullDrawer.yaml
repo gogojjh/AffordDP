@@ -22,8 +22,8 @@ sim:
 # cam
 cam:
   use_cam: True
-  cam_w: 1080 # 1080
-  cam_h: 720 # 720
+  cam_w: 1080
+  cam_h: 720
   cam_far_plane: 100
   cam_near_plane: 0.1
   cam_horizontal_fov: 75 # pixel

@@ -804,7 +804,7 @@ class CabinetManipEnv():
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_jacobian_tensors(self.sim)
         self.gym.refresh_mass_matrix_tensors(self.sim)
-        
+
         # state obs
         self.hand_pos = self.rb_states[self.hand_idxs, :3]
         self.hand_rot = self.rb_states[self.hand_idxs, 3:7]
@@ -813,7 +813,8 @@ class CabinetManipEnv():
         ### TODO: support different dof tensor shapes in different envs
         self.robot_dof_qpos_qvel = self.dof_states.reshape(self.num_envs,-1,2)[:,:self.franka_num_dofs, :].view(self.num_envs, self.franka_num_dofs, 2)
 
-        self.obs_buf = self._get_base_observations()
+        if get_visual_obs:
+            self.obs_buf = self._get_base_observations()
 
         return self.obs_buf
     
@@ -1009,14 +1010,12 @@ class CabinetManipEnv():
             self.run_steps(pre_steps = 5)
             action = torch.concatenate((self.hand_pos,self.hand_rot,pos_action[:,:self.franka_num_dofs]),dim=1).cpu().detach().numpy()
 
-            # save state and video
+            step_str = str(start_step + step_i).zfill(4)
+
             if save_video:
                 self.gym.render_all_camera_sensors(self.sim)
-                step_str = str(start_step + step_i).zfill(4)
                 os.makedirs(f"{save_root}/video", exist_ok=True)
                 self.gym.write_camera_image_to_file(self.sim, self.envs[0], self.cams[0][0], gymapi.IMAGE_COLOR, f"{save_root}/video/step-{step_str}.png")
-                # self.gym.write_camera_image_to_file(self.sim, self.envs[0], self.cams[0][0], gymapi.IMAGE_DEPTH, f"{save_root}/video/depth_step-{step_str}.png")
-                # self.gym.write_viewer_image_to_file(self.viewer, f"{save_root}/step-{start_step + step_i}.png")
 
             points_envs, colors_envs, masks_envs, rgb_envs, depth_envs ,seg_envs, ori_points_envs, ori_colors_envs, ori_masks_envs = self.get_camera_state()
             point = np.concatenate((points_envs[0][:, :3],colors_envs[0][:, :3]),axis=1)
@@ -1054,10 +1053,10 @@ class CabinetManipEnv():
         action = torch.concatenate((self.hand_pos,self.hand_rot,pos_action[:,:self.franka_num_dofs]),dim=1).cpu().detach().numpy()
 
         
+        step_str = str(start_step).zfill(4)
+
         if save_video:
             self.gym.render_all_camera_sensors(self.sim)
-            # start_step string, 4 digit
-            step_str = str(start_step).zfill(4)
             os.makedirs(f"{save_root}/video", exist_ok=True)
             self.gym.write_camera_image_to_file(self.sim, self.envs[0], self.cams[0][0], gymapi.IMAGE_COLOR, f"{save_root}/video/step-{step_str}.png")
 
@@ -1184,15 +1183,16 @@ class CabinetManipEnv():
             self.gym.simulate(self.sim)
             self.gym.fetch_results(self.sim, True)
 
-            self.refresh_observation()
+            # skip visual obs on intermediate substeps, only refresh state tensors
+            self.refresh_observation(get_visual_obs = (frame == pre_steps - 1))
             # self.transform_bbox(link_name='link_2')
-            
+
             if not self.headless :
                 self.render()
                 self.gym.render_all_camera_sensors(self.sim)
                 self.gym.step_graphics(self.sim)
 
-        self.refresh_observation()
+        self.refresh_observation(get_visual_obs = False)
     
     def clean_up(self):
         # cleanup
@@ -1416,80 +1416,85 @@ class CabinetManipEnv():
             self.rotations = quaternion_invert(matrix_to_quaternion(torch.cat((self.handle_long.reshape((-1,1,3)), 
                             self.handle_short.reshape((-1,1,3)), -self.handle_out.reshape((-1,1,3))), dim = 1)))
             
+            # NOTE(gogojjh): Grasp target position: center of the front face of the handle bounding box
             self.init_position = self.all_bbox_center_front_face[bbox_id].cpu().numpy()
+            self.init_position[2] -= 0.02  # offset gripper lower to reach the handle
             self.handle_out_ = self.handle_out[bbox_id].cpu().numpy()
             self.handle_long_ = self.handle_long[bbox_id].cpu().numpy()
             self.handle_short_ = self.handle_short[bbox_id].cpu().numpy()
 
             # self.init_position = self.init_position + np.random.uniform(low=-0.04,high=0.04)*self.handle_long_
-            
             # self.gym.add_lines(self.viewer, self.envs[env_i], 1, 
             #                         np.concatenate((self.init_position, 
             #                                         self.init_position + 0.35 * self.handle_out_), dtype=np.float32), 
-            #                         np.array([0, 0 ,1], dtype=np.float32))
+            #                         np.array([0, 0 ,1], dtype=np.float32))handle_out_
 
     def motion_planning(self, save_video = True, save_root='record', task_type='PullDrawer'):
-            rotation = self.rotations[self.bbox_id].cpu().numpy()
-            # noisy_rotation = rotation
-            std_dev = 0.01
-            rot_noise = np.random.normal(0,std_dev,rotation.shape)
-            noisy_rotation = rotation + rot_noise
-            noisy_rotation = noisy_rotation / np.linalg.norm(noisy_rotation)
-            # move the object to the pre-grasp position
-            pre_grasp_position = self.init_position + 0.2 * self.handle_out_
 
-            for i in range(1):
-                step_num, traj = self.control_to_pose(
-                                    np.array([*pre_grasp_position,*noisy_rotation]),
-                                    close_gripper = False, save_video = save_video, save_root = save_root, step_num = 0, use_ik = False)
-                if traj == None:
-                    return 0
-            # move the object to the grasp position
+        rotation = self.rotations[self.bbox_id].cpu().numpy()
+        # noisy_rotation = rotation
+        # std_dev = 0.01
+        ##### DEBUG(gogojjh): no noise for rotation
+        std_dev = 0.0
+        #####
+        rot_noise = np.random.normal(0,std_dev,rotation.shape)
+        noisy_rotation = rotation + rot_noise
+        noisy_rotation = noisy_rotation / np.linalg.norm(noisy_rotation)
+        # move the object to the pre-grasp position
+        pre_grasp_position = self.init_position + 0.12 * self.handle_out_
 
-            for i in range(1):
-
-                step_num, traj = self.control_to_pose(
-                                    np.array([*(self.init_position + (0.182-0.1) * self.handle_out_),*noisy_rotation]),
-                                    close_gripper = False, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
-                if traj == None:
-                    return 0
-                
-            # close the grippers
-            for i in range(2): 
-                self.move_gripper(close_gripper = True, save_video = save_video, save_root = save_root, start_step = step_num)
-            
-            dict = {"closed_gripper": step_num,
-                    "camera_proj": self.cam_projs[0][0].tolist(),
-                    "camera_view": self.cam_views[0][0].tolist(),
-                    "camera_w": self.cam_w,
-                    "camera_h": self.cam_h,
-                    "camera_fov": self.horizontal_fov,
-                    "cabinet_reset_pos": self.cabinet_reset_pos_tensor.cpu().numpy().tolist(),
-                    "franka_base_pos": self.franka_reset_pos_list[0].tolist()}
-            
-            file = f"{save_root}/closed_gripper.json"
-            write_json(dict, file)
-            
-            # move the object to the lift position
-            for i in range(1):  #25
-
-                if task_type == 'OpenDoor':
-                    step_num, traj = self.control_to_pose(
-                                        np.array([*(self.init_position + (0.1+25*0.01) * self.handle_out_- 0.12*self.handle_short_),*noisy_rotation]), 
-                                        close_gripper = True, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
-                    if traj == None:
-                        return 0
-                else:
-                    step_num, traj = self.control_to_pose(
-                                        np.array([*(self.init_position + (0.1+25*0.01) * self.handle_out_),*noisy_rotation]), 
-                                        close_gripper = True, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
-                    if traj == None:
-                        return 0
-            
-            if self._success():
-                return 1
-            else: 
+        for i in range(1):
+            step_num, traj = self.control_to_pose(
+                                np.array([*pre_grasp_position,*noisy_rotation]),
+                                close_gripper = False, save_video = save_video, save_root = save_root, step_num = 0, use_ik = False)
+            if traj == None:
                 return 0
+
+        # move the object to the grasp position
+        for i in range(1):
+
+            step_num, traj = self.control_to_pose(
+                                np.array([*(self.init_position + 0.02 * self.handle_out_),*noisy_rotation]),
+                                close_gripper = False, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
+            if traj == None:
+                return 0
+            
+        # close the grippers
+        for i in range(2): 
+            self.move_gripper(close_gripper = True, save_video = save_video, save_root = save_root, start_step = step_num)
+        
+        dict = {"closed_gripper": step_num,
+                "camera_proj": self.cam_projs[0][0].tolist(),
+                "camera_view": self.cam_views[0][0].tolist(),
+                "camera_w": self.cam_w,
+                "camera_h": self.cam_h,
+                "camera_fov": self.horizontal_fov,
+                "cabinet_reset_pos": self.cabinet_reset_pos_tensor.cpu().numpy().tolist(),
+                "franka_base_pos": self.franka_reset_pos_list[0].tolist()}
+        
+        file = f"{save_root}/closed_gripper.json"
+        write_json(dict, file)
+        
+        # move the object to the lift position
+        for i in range(1):  #25
+
+            if task_type == 'OpenDoor':
+                step_num, traj = self.control_to_pose(
+                                    np.array([*(self.init_position + (0.1+25*0.01) * self.handle_out_- 0.12*self.handle_short_),*noisy_rotation]), 
+                                    close_gripper = True, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
+                if traj == None:
+                    return 0
+            else:
+                step_num, traj = self.control_to_pose(
+                                    np.array([*(self.init_position + (0.1+25*0.01) * self.handle_out_),*noisy_rotation]), 
+                                    close_gripper = True, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
+                if traj == None:
+                    return 0
+        
+        if self._success():
+            return 1
+        else: 
+            return 0
     
 
     def transform_bbox(self, link_name='link_1'):
