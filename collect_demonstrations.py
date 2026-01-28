@@ -44,17 +44,14 @@ def collect_demo(args):
     if not task_name in ['PullDrawer', 'OpenDoor']:
         raise ValueError(f'Invalid task_type: {task_name}')
 
-    ##### STEP 1: Load configuration from YAML file and set target object_id
     config_path = os.path.join(os.getcwd(),"afforddp/config/env",args.config_name)
     cfgs = read_yaml_config(config_path)
     obj_id = args.obj_id
     cfgs['asset']['arti']['arti_gapartnet_ids'] = [obj_id]
     num_demos = cfgs['num_demos']
 
-    ##### STEP 2: Initialize IsaacGym environment with loaded configuration
     gym = CabinetManipEnv(cfgs)
 
-    ##### STEP 3: Create output directory and save configuration for reproducibility
     save_data_dir = f"{args.save_dir}/{task_name}/{obj_id}"
 
     if not os.path.exists(save_data_dir):
@@ -81,15 +78,12 @@ def collect_demo(args):
             gym.cal_handle(bbox_id=args.part_id)  # Select which part to manipulate
             save_root=f'{save_data_dir}/traj_{count}'
 
-
             if not os.path.exists(save_root):
                 os.makedirs(save_root)
-                ##### STEP 4: Execute motion planning using cuRobo and save trajectory data
                 success = gym.motion_planning(save_video=True, save_root=save_root, task_type=task_name)
                 if not success:
                     shutil.rmtree(save_root)  # Delete failed trajectory
                 else:
-                    ##### STEP 5: Count successful demonstration and update progress
                     count += success
                     pbar.update(1)
             else:
@@ -100,15 +94,12 @@ def collect_demo(args):
                 traj_id = int(path[-1].split('_')[-1]) + 1
                 save_root = f'{save_data_dir}/traj_{traj_id}'
                 os.makedirs(save_root)
-                ##### STEP 4: Execute motion planning using cuRobo and save trajectory data
                 success = gym.motion_planning(save_video=True, save_root=save_root, task_type=task_name)
                 if not success:
                     shutil.rmtree(save_root)  # Delete failed trajectory
                 else:
-                    ##### STEP 5: Count successful demonstration and update progress
                     count += success
                     pbar.update(1)
-
     del gym
 
 if __name__ =='__main__':

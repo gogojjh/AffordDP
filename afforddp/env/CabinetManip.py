@@ -1428,8 +1428,7 @@ class CabinetManipEnv():
             #                                         self.init_position + 0.35 * self.handle_out_), dtype=np.float32), 
             #                         np.array([0, 0 ,1], dtype=np.float32))
 
-    def motion_planning(self,save_video = True, save_root='record', task_type='PullDrawer'):
-
+    def motion_planning(self, save_video = True, save_root='record', task_type='PullDrawer'):
             rotation = self.rotations[self.bbox_id].cpu().numpy()
             # noisy_rotation = rotation
             std_dev = 0.01
