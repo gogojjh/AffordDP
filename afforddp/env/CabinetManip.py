@@ -1433,10 +1433,7 @@ class CabinetManipEnv():
 
         rotation = self.rotations[self.bbox_id].cpu().numpy()
         # noisy_rotation = rotation
-        # std_dev = 0.01
-        ##### DEBUG(gogojjh): no noise for rotation
-        std_dev = 0.0
-        #####
+        std_dev = 0.01
         rot_noise = np.random.normal(0,std_dev,rotation.shape)
         noisy_rotation = rotation + rot_noise
         noisy_rotation = noisy_rotation / np.linalg.norm(noisy_rotation)
