@@ -37,7 +37,7 @@ def uniform_sampling(array, num):
     return sample_array
 
 def parse_args():
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--save_dir', type=str)
@@ -49,6 +49,44 @@ def parse_args():
 
 def process_data(data_dir=None, save_dir=None, save_name=None, vis=False):
     root = data_dir
+
+    # Auto-generate save_name if not provided
+    if save_name is None:
+        # Extract a meaningful name from data_dir
+        # e.g., "record/PullDrawer/27044" -> "PullDrawer_27044"
+        # or "record/PullDrawer" with 27044 inside -> "PullDrawer_27044"
+        path_parts = [p for p in data_dir.rstrip('/').split('/') if p]
+
+        # Check if the last part is numeric (likely an object ID)
+        if len(path_parts) >= 2 and path_parts[-1].isdigit():
+            # Use task_objID format (e.g., PullDrawer_27044)
+            task_name = path_parts[-2]
+            obj_id = path_parts[-1]
+            save_name = f"{task_name}_{obj_id}"
+        elif len(path_parts) >= 1:
+            # Scan directory for object IDs
+            task_name = path_parts[-1]
+            obj_ids = []
+            try:
+                for item in os.listdir(data_dir):
+                    item_path = os.path.join(data_dir, item)
+                    # Check if it's a directory and has numeric name (likely object ID)
+                    if os.path.isdir(item_path) and item.isdigit():
+                        obj_ids.append(item)
+            except:
+                pass
+
+            if obj_ids:
+                obj_ids.sort()
+                # Use task_objID1_objID2... format
+                save_name = f"{task_name}_{'_'.join(obj_ids)}"
+            else:
+                # Fallback to just task name
+                save_name = task_name
+        else:
+            save_name = "processed_data"
+
+        print(f"Auto-generated save name: {save_name}")
 
     state_arrays = []
     action_arrays = []

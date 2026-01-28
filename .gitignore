@@ -1,6 +1,10 @@
 */*.pyc
+*.pyc
 __pycache__/
 assets/*
 record*/*
 test/*
 third_party/*
+data/
+output/
+outputs/
