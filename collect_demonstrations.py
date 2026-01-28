@@ -15,6 +15,8 @@ import os
 import shutil
 from isaacgym import gymutil
 import argparse
+import cv2
+from PIL import Image
 
 torch.set_printoptions(precision=4, sci_mode=False)
 
@@ -22,7 +24,59 @@ def save_config(data, save_config_path):
 
     with open(save_config_path, 'w') as file:
         json.dump(data, file, indent=4)
-        
+
+def create_video_from_images(video_dir, output_path, fps=20):
+    """Create MP4 video from images in video_dir"""
+    image_files = sorted(glob.glob(os.path.join(video_dir, "step-*.png")))
+
+    if not image_files:
+        print(f"No images found in {video_dir}")
+        return None
+
+    # Read first image to get dimensions
+    first_img = cv2.imread(image_files[0])
+    height, width, _ = first_img.shape
+
+    # Create video writer
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    print(f"Creating video with {len(image_files)} frames at {fps} fps...")
+    for img_file in tqdm.tqdm(image_files, desc="Writing video"):
+        img = cv2.imread(img_file)
+        video_writer.write(img)
+
+    video_writer.release()
+    print(f"Video saved to {output_path}")
+    return output_path
+
+def convert_video_to_gif(video_path, gif_path, fps=20):
+    """Convert MP4 video to GIF"""
+    print(f"Converting video to GIF...")
+
+    # Read video
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # Convert BGR to RGB
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(Image.fromarray(frame_rgb))
+
+    cap.release()
+
+    if frames:
+        # Save as GIF
+        duration = int(1000 / fps)  # duration per frame in milliseconds
+        frames[0].save(gif_path, save_all=True, append_images=frames[1:],
+                      duration=duration, loop=0, optimize=False)
+        print(f"GIF saved to {gif_path}")
+    else:
+        print("No frames to convert")
+
 def parse_args():
     
     parser = argparse.ArgumentParser()
@@ -81,6 +135,15 @@ def collect_demo(args):
             if not os.path.exists(save_root):
                 os.makedirs(save_root)
                 success = gym.motion_planning(save_video=True, save_root=save_root, task_type=task_name)
+
+                # Generate video and GIF regardless of success or failure
+                video_dir = os.path.join(save_root, 'video')
+                if os.path.exists(video_dir):
+                    mp4_path = os.path.join(save_root, 'trajectory.mp4')
+                    gif_path = os.path.join(save_root, 'trajectory.gif')
+                    create_video_from_images(video_dir, mp4_path, fps=20)
+                    convert_video_to_gif(mp4_path, gif_path, fps=20)
+
                 if not success:
                     shutil.rmtree(save_root)  # Delete failed trajectory
                 else:
@@ -95,11 +158,21 @@ def collect_demo(args):
                 save_root = f'{save_data_dir}/traj_{traj_id}'
                 os.makedirs(save_root)
                 success = gym.motion_planning(save_video=True, save_root=save_root, task_type=task_name)
+
+                # Generate video and GIF regardless of success or failure
+                video_dir = os.path.join(save_root, 'video')
+                if os.path.exists(video_dir):
+                    mp4_path = os.path.join(save_root, 'trajectory.mp4')
+                    gif_path = os.path.join(save_root, 'trajectory.gif')
+                    create_video_from_images(video_dir, mp4_path, fps=20)
+                    convert_video_to_gif(mp4_path, gif_path, fps=20)
+
                 if not success:
                     shutil.rmtree(save_root)  # Delete failed trajectory
                 else:
                     count += success
                     pbar.update(1)
+            break
     del gym
 
 if __name__ =='__main__':

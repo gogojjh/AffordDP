@@ -97,12 +97,27 @@ assets/
 #### Expert Demonstration Collection  <a id="expert-demonstration-collection"></a>
 You could generate demonstrations by yourself using our provided expert policies. Generated demonstrations are under `$YOUR_DATA_SAVE_PATH`. Default save path is `record`.
 ```bash
-python collect_demonstrations.py --save_dir $YOUR_DATA_SAVE_PATH --obj_id $GAPartNet_obj_id --part_id $Manip_Part_id 
+python collect_demonstrations.py --save_dir $YOUR_DATA_SAVE_PATH --obj_id $GAPartNet_obj_id --part_id $Manip_Part_id
 ```
 By this way,  you will be able to collect expert trajectories for specific parts of an object.
-After collection, you need to process these datasets. 
+
+**Example:** Collect demonstration for object ID 27044, part ID 1:
 ```bash
-python process_data.py --data_dir $YOUR_DATA_SAVE_PATH --save_dir $PROCESS_DATA_SAVE_PATH 
+python collect_demonstrations.py --save_dir record --obj_id 27044 --part_id 1
+```
+
+This will generate:
+- Expert trajectory data (`.npz` files)
+- Rendered images showing each step
+- An MP4 video (`trajectory.mp4`) at 20 fps
+- An animated GIF (`trajectory.gif`)
+
+**Example Output:**
+![Trajectory Demo](doc/27044_traj_demo.gif)
+
+After collection, you need to process these datasets.
+```bash
+python process_data.py --data_dir $YOUR_DATA_SAVE_PATH --save_dir $PROCESS_DATA_SAVE_PATH
 ```
 The data processing script will convert all collected data into zarr format and save it to your specified directory. Default save path is `data`.
 
