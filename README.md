@@ -97,7 +97,7 @@ assets/
 #### Expert Demonstration Collection  <a id="expert-demonstration-collection"></a>
 You could generate demonstrations by yourself using our provided expert policies. Generated demonstrations are under `$YOUR_DATA_SAVE_PATH`. Default save path is `record`.
 ```bash
-python collect_demonstrations.py --save_dir $YOUR_DATA_SAVE_PATH --object_id $GAPartNet_obj_id --part_id $Manip_Part_id 
+python collect_demonstrations.py --save_dir $YOUR_DATA_SAVE_PATH --obj_id $GAPartNet_obj_id --part_id $Manip_Part_id 
 ```
 By this way,  you will be able to collect expert trajectories for specific parts of an object.
 After collection, you need to process these datasets. 

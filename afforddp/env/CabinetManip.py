@@ -951,7 +951,7 @@ class CabinetManipEnv():
         start_state: JointState
             if None, use current state as start state
             else, use given start_state
-            
+
         position: list or np.array
             target position
         quaternion: list or np.array
@@ -961,8 +961,23 @@ class CabinetManipEnv():
         self.franka_pos = self.root_states[0,0,:3]
         if start_state == None:
             start_state = JointState.from_position(self.robot_dof_qpos_qvel[:,:7,0])
-        goal_state = Pose(torch.tensor(torch.tensor(position)-self.franka_pos.cpu(), device = self.device, dtype = torch.float64), 
-                          quaternion=torch.tensor(quaternion, device = self.device, dtype = torch.float64))
+
+        # Convert position and quaternion to proper tensors (fix UserWarning)
+        if isinstance(position, torch.Tensor):
+            position_tensor = position.clone().detach()
+        else:
+            position_tensor = torch.tensor(position, dtype=torch.float32)
+
+        if isinstance(quaternion, torch.Tensor):
+            quaternion_tensor = quaternion.clone().detach()
+        else:
+            quaternion_tensor = torch.tensor(quaternion, dtype=torch.float32)
+
+        # Calculate relative position for cuRobo
+        relative_position = position_tensor - self.franka_pos.cpu()
+
+        goal_state = Pose(relative_position.to(device=self.device, dtype=torch.float64),
+                          quaternion=quaternion_tensor.to(device=self.device, dtype=torch.float64))
         result = self.motion_gen.plan_single(start_state, goal_state, MotionGenPlanConfig(max_attempts=max_attempts))
 
         traj = result.get_interpolated_plan()
@@ -1078,7 +1093,7 @@ class CabinetManipEnv():
         USE_IK_CONTROL = use_ik
         if USE_IK_CONTROL:
             self.plan_to_pose_ik(
-                torch.tensor(pose[:3], dtype = torch.float32), 
+                torch.tensor(pose[:3], dtype = torch.float32),
                 torch.tensor(pose[3:], dtype = torch.float32),
                 close_gripper=close_gripper,
                 save_video=save_video,
@@ -1090,8 +1105,8 @@ class CabinetManipEnv():
             return step_num, None
         else:
             traj = self.plan_to_pose_curobo(
-                torch.tensor(pose[:3], dtype = torch.float32), 
-                torch.tensor(pose[3:], dtype = torch.float32), 
+                torch.tensor(pose[:3], dtype = torch.float32),
+                torch.tensor(pose[3:], dtype = torch.float32),
                 start_state=start_qpos
             )
             if traj == None:
@@ -1414,7 +1429,7 @@ class CabinetManipEnv():
             #                         np.array([0, 0 ,1], dtype=np.float32))
 
     def motion_planning(self,save_video = True, save_root='record', task_type='PullDrawer'):
-            
+
             rotation = self.rotations[self.bbox_id].cpu().numpy()
             # noisy_rotation = rotation
             std_dev = 0.01
@@ -1424,18 +1439,18 @@ class CabinetManipEnv():
             # move the object to the pre-grasp position
             pre_grasp_position = self.init_position + 0.2 * self.handle_out_
 
-            for i in range(1): 
+            for i in range(1):
                 step_num, traj = self.control_to_pose(
-                                    np.array([*pre_grasp_position,*noisy_rotation]), 
+                                    np.array([*pre_grasp_position,*noisy_rotation]),
                                     close_gripper = False, save_video = save_video, save_root = save_root, step_num = 0, use_ik = False)
                 if traj == None:
                     return 0
             # move the object to the grasp position
 
-            for i in range(1): 
+            for i in range(1):
 
                 step_num, traj = self.control_to_pose(
-                                    np.array([*(self.init_position + (0.182-0.1) * self.handle_out_),*noisy_rotation]), 
+                                    np.array([*(self.init_position + (0.182-0.1) * self.handle_out_),*noisy_rotation]),
                                     close_gripper = False, save_video = save_video, save_root = save_root, step_num = step_num, use_ik = False)
                 if traj == None:
                     return 0
