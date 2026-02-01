@@ -25,10 +25,10 @@ Usage: $0 --task_name <collect_demon|process_data|train_policy|eval_policy|all> 
 
 Required:
   --task_name         Task: collect_demon, process_data, train_policy, eval_policy, all
+  --config_name       Config name: PullDrawer.yaml or OpenDoor.yaml
   --obj_id            Object ID (required for collect_demon, eval_policy, all)
 
 Optional:
-  --config_name       Config name (default: PullDrawer.yaml)
   --part_id           Part ID (default: -1)
   --seed              Seed (default: 42)
   --cuda_id           GPU ID (default: 0)
@@ -39,19 +39,19 @@ Optional:
 
 Examples:
   # Collect demonstrations with 4 parallel workers
-  $0 --task_name collect_demon --obj_id 27044 --part_id 1 --num_parallel 4
+  $0 --task_name collect_demon --config_name PullDrawer.yaml --obj_id 46859 --part_id 1 --num_parallel 4
 
   # Process collected data
-  $0 --task_name process_data --obj_id 27044
+  $0 --task_name process_data --config_name PullDrawer.yaml --obj_id 46859
 
   # Train policy with custom seed and GPU
-  $0 --task_name train_policy --seed 42 --cuda_id 0
+  $0 --task_name train_policy --config_name OpenDoor.yaml --seed 42 --cuda_id 0
 
   # Evaluate trained policy on specific object
-  $0 --task_name eval_policy --obj_id 27044 --ckpt_path outputs/2025.01.28/14.30.45_train_afford_cond_pointcloud_dp
+  $0 --task_name eval_policy --config_name PullDrawer.yaml --obj_id 46859 --ckpt_path outputs/2025.01.28/14.30.45_train_afford_cond_pointcloud_dp
 
   # Run complete workflow (collect, process, train, eval)
-  $0 --task_name all --obj_id 27044 --part_id 1 --num_parallel 4
+  $0 --task_name all --config_name OpenDoor.yaml --obj_id 46859 --part_id 1 --num_parallel 4
 EOF
     exit 1
 }
@@ -74,13 +74,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[ -z "$CONFIG_NAME" ] && CONFIG_NAME="PullDrawer.yaml"
-TASK_NAME=$(echo "$CONFIG_NAME" | sed 's/.yaml//')
-
 # Validate
 [ -z "$TASK" ] && { echo "Error: --task_name required"; usage; }
+[ -z "$CONFIG_NAME" ] && { echo "Error: --config_name required (use PullDrawer.yaml or OpenDoor.yaml)"; usage; }
 [[ "$TASK" == "collect_demon" || "$TASK" == "eval_policy" || "$TASK" == "all" ]] && [ -z "$OBJ_ID" ] && { echo "Error: --obj_id required"; usage; }
 [[ "$TASK" == "eval_policy" ]] && [ -z "$CKPT_PATH" ] && { echo "Error: --ckpt_path required"; usage; }
+
+TASK_NAME=$(echo "$CONFIG_NAME" | sed 's/.yaml//')
 
 collect_demonstrations() {
     echo "==> Collecting demonstrations (obj_id=$OBJ_ID, part_id=$PART_ID, parallel=$NUM_PARALLEL)"

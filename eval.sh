@@ -1,10 +1,11 @@
 ckpt=${1}
 object_id=${2}
-export TORCH_CUDA_ARCH_LIST="8.9"
+export TORCH_CUDA_ARCH_LIST="8.6"
 export CUDA_HOME=/usr/local/cuda-11.7
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 export CPATH=$CUDA_HOME/include:$CPATH
+export CUDAHOSTCXX=/usr/bin/gcc-9
 python eval_policy.py --config-name=afford_cond_pointcloud_dp.yaml \
                         task=PullDrawer \
                         hydra.run.dir=${ckpt} \

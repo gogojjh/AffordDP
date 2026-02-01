@@ -69,6 +69,7 @@ class CabinetManipRunner(BasePointcloudRunner):
             shutil.rmtree(self.output_dir)
             os.makedirs(self.output_dir)
 
+    # Main program: evaluation runner
     def run(self, policy):
         
         device = policy.device
