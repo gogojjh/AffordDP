@@ -81,6 +81,7 @@ def parse_args():
     parser.add_argument('--part_id', type=int, default=-1, help='select part to manipulation')
     parser.add_argument('--seed', type=int, default=43)
     parser.add_argument('--num_parallel', type=int, default=1, help='number of parallel processes for demonstration collection')
+    parser.add_argument('--num_demos', type=int, default=None, help='override number of demonstrations to collect')
 
     args = parser.parse_args()
 
@@ -191,10 +192,15 @@ def collect_demo_worker(args, worker_id, demos_to_collect, lock, progress_queue)
 def collect_demo(args):
     """Main function to orchestrate parallel demonstration collection"""
 
+    # Set spawn method for multiprocessing to avoid CUDA reinitialization issues
+    if args.num_parallel > 1:
+        mp.set_start_method('spawn', force=True)
+
     task_name = args.config_name.split(".")[0]
     config_path = os.path.join(os.getcwd(), "afforddp/config/env", args.config_name)
     cfgs = read_yaml_config(config_path)
-    total_demos = cfgs['num_demos']
+    # Use provided num_demos override if specified, otherwise use config value
+    total_demos = args.num_demos if args.num_demos is not None else cfgs['num_demos']
 
     if args.num_parallel == 1:
         # Single process mode - original behavior with progress bar

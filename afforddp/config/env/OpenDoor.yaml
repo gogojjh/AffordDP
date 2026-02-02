@@ -62,7 +62,7 @@ asset:
   arti:
     arti_obj_root: partnet_mobility_part
     arti_gapartnet_ids: 
-      - 27044
+      - 46859
     arti_obj_pose_ps: 
       - [0.6, 0.1, 0.6]
     arti_reset_position_noise: 0.01

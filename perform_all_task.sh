@@ -45,13 +45,13 @@ Examples:
   $0 --task_name process_data --config_name PullDrawer.yaml --obj_id 46859
 
   # Train policy with custom seed and GPU
-  $0 --task_name train_policy --config_name OpenDoor.yaml --seed 42 --cuda_id 0
+  $0 --task_name train_policy --config_name PullDrawer.yaml --seed 42 --cuda_id 0
 
   # Evaluate trained policy on specific object
   $0 --task_name eval_policy --config_name PullDrawer.yaml --obj_id 46859 --ckpt_path outputs/2025.01.28/14.30.45_train_afford_cond_pointcloud_dp
 
   # Run complete workflow (collect, process, train, eval)
-  $0 --task_name all --config_name OpenDoor.yaml --obj_id 46859 --part_id 1 --num_parallel 4
+  $0 --task_name all --config_name PullDrawer.yaml --obj_id 46859 --part_id 0 --num_parallel 4
 EOF
     exit 1
 }

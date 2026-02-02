@@ -1,4 +1,4 @@
-DEBUG=True
+DEBUG=False
 save_ckpt=True
 
 seed=${1}
@@ -17,7 +17,7 @@ fi
 
 
 python train_policy.py --config-name=afford_cond_pointcloud_dp.yaml \
-                        task=PullDrawer \
+                        task=OpenDoor \
                         training.seed=${seed} \
                         training.device="cuda:${cuda_id}" \
                         logging.mode=${wandb_mode} \

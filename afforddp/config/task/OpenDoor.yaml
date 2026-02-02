@@ -1,6 +1,6 @@
-name: PullDrawer
+name: OpenDoor
 
-task_name: PullDrawer
+task_name: OpenDoor
 
 shape_meta: &shape_meta
   # acceptable types: rgb, low_dim
@@ -28,13 +28,13 @@ env_runner:
   memory_dir: data/memory
   output_dir: eval_results
   rl_device: 'cuda'
-  config_path: afforddp/config/env/PullDrawer.yaml
+  config_path: afforddp/config/env/OpenDoor.yaml
   object_id: 0
-  
+
 
 dataset:
   _target_: afforddp.dataset.Cabinet_afford_dataset.CabinetManipAffordDataset
-  zarr_path: data/SingleObject/OpenDrawer_expert.zarr/46859_OpenDrawer_expert.zarr
+  zarr_path: data/SingleObject/OpenDoor_expert.zarr/46859_OpenDoor_expert.zarr
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
